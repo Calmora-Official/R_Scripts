@@ -1,0 +1,61 @@
+name: Publish Script
+
+on:
+  repository_dispatch:
+    types: [publish_script]
+
+permissions:
+  contents: write # Required to commit the new file back to the repo
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Write script file and update manifest
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const payload = context.payload.client_payload;
+            const { name, description, code } = payload;
+
+            // Sanitize the filename
+            const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+            // Ensure scripts directory exists
+            const scriptsDir = path.join(process.env.GITHUB_WORKSPACE, 'scripts');
+            if (!fs.existsSync(scriptsDir)) {
+              fs.mkdirSync(scriptsDir, { recursive: true });
+            }
+
+            // 1. Write the Luau file
+            const scriptPath = path.join(scriptsDir, `${safeName}.lua`);
+            fs.writeFileSync(scriptPath, code, 'utf8');
+
+            // 2. Update scripts.json manifest
+            const manifestPath = path.join(process.env.GITHUB_WORKSPACE, 'scripts.json');
+            let manifest = [];
+            if (fs.existsSync(manifestPath)) {
+              manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            }
+
+            // Remove existing entry with same name (overwrite)
+            manifest = manifest.filter(entry => entry.name !== safeName);
+            manifest.push({ name: safeName, description });
+
+            fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scripts/ scripts.json
+          git commit -m "Publish script: ${{ github.event.client_payload.name }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
