@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>R.Script – Community Script Hub</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>R.Script</h1>
+    <p>Community‑published Luau scripts for Roblox executors</p>
+  </header>
+
+  <main>
+    <!-- Submission form -->
+    <section class="submit-section">
+      <h2>Publish a Script</h2>
+      <form id="publish-form">
+        <input type="text" id="script-name" placeholder="Script name (e.g. examplekeyscript)" required>
+        <input type="text" id="script-desc" placeholder="Short description" required>
+        <textarea id="script-code" placeholder="Paste your full Luau code here..." rows="8" required></textarea>
+        <button type="submit">Publish</button>
+      </form>
+      <p id="status"></p>
+    </section>
+
+    <!-- Script list -->
+    <section class="scripts-section">
+      <h2>Published Scripts</h2>
+      <div id="scripts-list">Loading…</div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
