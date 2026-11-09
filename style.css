@@ -1,0 +1,12 @@
+body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; background: #0f172a; color: #e2e8f0; }
+header { text-align: center; margin-bottom: 2rem; }
+h1 { color: #38bdf8; }
+form { display: flex; flex-direction: column; gap: 0.75rem; }
+input, textarea, button { padding: 0.6rem; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; }
+button { background: #38bdf8; color: #0f172a; font-weight: bold; cursor: pointer; }
+button:hover { background: #0ea5e9; }
+#scripts-list { display: grid; gap: 1rem; margin-top: 1rem; }
+.script-card { background: #1e293b; padding: 1rem; border-radius: 8px; }
+.script-card h3 { margin-top: 0; color: #38bdf8; }
+.loader-code { background: #0f172a; padding: 0.5rem; border-radius: 4px; font-family: monospace; font-size: 0.9rem; overflow-x: auto; }
+#status { margin-top: 0.5rem; color: #4ade80; }
