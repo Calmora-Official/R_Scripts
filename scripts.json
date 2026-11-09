@@ -7,5 +7,10 @@
     "name": "examplekeyscript",
     "description": "Official Demo Test (If getting notification in console saying \"Demo script loaded successfully!\", then the demo is active and working!",
     "publishedAt": "2026-11-09T19:26:43.656Z"
+  },
+  {
+    "name": "hi",
+    "description": "hi",
+    "publishedAt": "2026-11-09T19:27:22.291Z"
   }
 ]
