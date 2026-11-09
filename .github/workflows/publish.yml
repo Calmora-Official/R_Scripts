@@ -5,7 +5,8 @@ on:
     types: [publish_script]
 
 permissions:
-  contents: write # Required to commit the new file back to the repo
+  contents: write   # Required to commit new script files
+  actions: write    # Required to trigger the deploy workflow
 
 jobs:
   publish:
@@ -13,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Write script file and update manifest
         uses: actions/github-script@v7
@@ -21,41 +24,81 @@ jobs:
             const fs = require('fs');
             const path = require('path');
 
+            // ---- 1. Validate the incoming payload ----
             const payload = context.payload.client_payload;
-            const { name, description, code } = payload;
+            if (!payload || !payload.name || !payload.code) {
+              core.setFailed('Invalid payload: "name" and "code" are required.');
+              return;
+            }
 
-            // Sanitize the filename
-            const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const { description } = payload;
+            const code = payload.code;
 
-            // Ensure scripts directory exists
+            // Sanitize the filename so it is safe on disk
+            const safeName = payload.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+            core.info(`Publishing script as: ${safeName}.lua`);
+
+            // ---- 2. Write the .lua file ----
             const scriptsDir = path.join(process.env.GITHUB_WORKSPACE, 'scripts');
             if (!fs.existsSync(scriptsDir)) {
               fs.mkdirSync(scriptsDir, { recursive: true });
             }
-
-            // 1. Write the Luau file
             const scriptPath = path.join(scriptsDir, `${safeName}.lua`);
             fs.writeFileSync(scriptPath, code, 'utf8');
+            core.info(`Wrote ${scriptPath} (${code.length} bytes)`);
 
-            // 2. Update scripts.json manifest
+            // ---- 3. Update (or create) scripts.json ----
             const manifestPath = path.join(process.env.GITHUB_WORKSPACE, 'scripts.json');
             let manifest = [];
             if (fs.existsSync(manifestPath)) {
-              manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+              try {
+                manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+                if (!Array.isArray(manifest)) manifest = [];
+              } catch (e) {
+                core.warning('Existing scripts.json could not be parsed; starting fresh.');
+                manifest = [];
+              }
             }
 
-            // Remove existing entry with same name (overwrite)
+            // Overwrite any existing entry with the same name
             manifest = manifest.filter(entry => entry.name !== safeName);
-            manifest.push({ name: safeName, description });
+            manifest.push({
+              name: safeName,
+              description: description || '',
+              publishedAt: new Date().toISOString()
+            });
 
             fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
+            core.info(`Updated scripts.json (${manifest.length} entries total)`);
 
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add scripts/ scripts.json
-          git commit -m "Publish script: ${{ github.event.client_payload.name }}"
-          git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          if git diff --staged --quiet; then
+            echo "No changes to commit (script content identical to previous version)."
+          else
+            git commit -m "Publish script: ${{ github.event.client_payload.name }}"
+            git push
+            echo "Committed and pushed."
+          fi
+
+      - name: Trigger Pages deploy
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Determine the default branch dynamically
+            const { data: repo } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy.yml',
+              ref: repo.default_branch
+            });
+
+            core.info(`Triggered deploy.yml on branch "${repo.default_branch}".`);
